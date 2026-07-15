@@ -49,9 +49,24 @@ document.addEventListener('DOMContentLoaded', () => {
         quantityDisplay.textContent = currentQuantity;
     });
 
-    // Toggle cart dropdown
-    cartContainer.addEventListener('click', () => {
-        cartDropdown.classList.toggle('show-cart');
+    const cartIcon = document.querySelector('.cart-icon');
+
+    // Toggle cart dropdown only when clicking the cart icon
+    if (cartIcon) {
+        cartIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cartDropdown.classList.toggle('show-cart');
+        });
+    }
+
+    // Prevent clicks inside dropdown from closing it
+    cartDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+        cartDropdown.classList.remove('show-cart');
     });
 
     // Add current selection to cart
@@ -73,15 +88,43 @@ document.addEventListener('DOMContentLoaded', () => {
         cartDropdown.classList.add('show-cart');
     });
 
-    // Handle delete per line using event delegation
+    // Handle cart item buttons (increase, decrease, delete) using event delegation
     cartContent.addEventListener('click', (e) => {
+        const inc = e.target.closest('.cart-increase');
+        if (inc) {
+            const id = inc.dataset.id;
+            const item = cartItems.find(i => i.id === id);
+            if (item) {
+                item.qty += 1;
+                updateCartUI();
+            }
+            return;
+        }
+
+        const dec = e.target.closest('.cart-decrease');
+        if (dec) {
+            const id = dec.dataset.id;
+            const item = cartItems.find(i => i.id === id);
+            if (item) {
+                item.qty -= 1;
+                if (item.qty <= 0) {
+                    const idx = cartItems.findIndex(i => i.id === id);
+                    if (idx !== -1) cartItems.splice(idx, 1);
+                }
+                updateCartUI();
+            }
+            return;
+        }
+
         const del = e.target.closest('.delete-btn');
-        if (!del) return;
-        const id = del.dataset.id;
-        const idx = cartItems.findIndex(i => i.id === id);
-        if (idx !== -1) {
-            cartItems.splice(idx, 1);
-            updateCartUI();
+        if (del) {
+            const id = del.dataset.id;
+            const idx = cartItems.findIndex(i => i.id === id);
+            if (idx !== -1) {
+                cartItems.splice(idx, 1);
+                updateCartUI();
+            }
+            return;
         }
     });
 
@@ -98,6 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <img src="${i.img}" alt="${i.title}" class="cart-item-img" style="width:50px; border-radius:8px;">
                     <div class="cart-item-info">
                         <p>${i.title}</p>
+                        <div style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                            <button class="cart-decrease" data-id="${i.id}" type="button" style="padding:4px 8px;">-</button>
+                            <span style="min-width:20px;text-align:center;font-weight:bold;">${i.qty}</span>
+                            <button class="cart-increase" data-id="${i.id}" type="button" style="padding:4px 8px;">+</button>
+                            <span style="margin-left:12px;color:#666;">$${i.price.toFixed(2)} each</span>
+                        </div>
                         <p>$${i.price.toFixed(2)} x ${i.qty} <b>$${lineTotal.toFixed(2)}</b></p>
                     </div>
                     <button class="delete-btn" type="button" data-id="${i.id}">Delete</button>
