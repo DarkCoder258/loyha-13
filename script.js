@@ -13,8 +13,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartContent = document.querySelector('.cart-content');
 
     let currentQuantity = 0;
-    let cartItemsCount = 0;
+
     const unitPrice = 125.00;
+
+    // Represent cart as an array of items so we can compute line totals
+    const cartItems = [];
+    const product = {
+        id: 'sneaker-1',
+        title: 'Fall Limited Edition Sneakers',
+        img: './img/rasm2.png',
+        price: unitPrice
+    };
 
     if (!mainImage || thumbnails.length === 0 || !minusBtn || !plusBtn || !quantityDisplay || !addToCartBtn || !cartContainer || !cartDropdown || !cartBadge || !cartContent) {
         return;
@@ -40,44 +49,70 @@ document.addEventListener('DOMContentLoaded', () => {
         quantityDisplay.textContent = currentQuantity;
     });
 
+    // Toggle cart dropdown
     cartContainer.addEventListener('click', () => {
         cartDropdown.classList.toggle('show-cart');
     });
 
+    // Add current selection to cart
     addToCartBtn.addEventListener('click', () => {
-        if (currentQuantity === 0) {
-            return;
+        if (currentQuantity === 0) return;
+
+        const existing = cartItems.find(i => i.id === product.id);
+        if (existing) {
+            existing.qty += currentQuantity;
+        } else {
+            cartItems.push({ id: product.id, title: product.title, img: product.img, price: product.price, qty: currentQuantity });
         }
 
-        cartItemsCount += currentQuantity;
+        // reset selection
         currentQuantity = 0;
         quantityDisplay.textContent = currentQuantity;
+
         updateCartUI();
         cartDropdown.classList.add('show-cart');
     });
 
-    cartContent.addEventListener('click', event => {
-        if (event.target.closest('.delete-btn')) {
-            clearCart();
+    // Handle delete per line using event delegation
+    cartContent.addEventListener('click', (e) => {
+        const del = e.target.closest('.delete-btn');
+        if (!del) return;
+        const id = del.dataset.id;
+        const idx = cartItems.findIndex(i => i.id === id);
+        if (idx !== -1) {
+            cartItems.splice(idx, 1);
+            updateCartUI();
         }
     });
 
     function updateCartUI() {
-        if (cartItemsCount > 0) {
+        const totalQty = cartItems.reduce((s, i) => s + i.qty, 0);
+        if (totalQty > 0) {
             cartBadge.style.display = 'block';
-            cartBadge.textContent = cartItemsCount;
+            cartBadge.textContent = totalQty;
 
-            const total = unitPrice * cartItemsCount;
-            cartContent.innerHTML = `
+            const lines = cartItems.map(i => {
+                const lineTotal = i.price * i.qty;
+                return `
                 <div class="cart-item">
-                    <img src="./img/rasm2.png" alt="Sneakers" class="cart-item-img" style="width: 50px; border-radius: 8px;">
+                    <img src="${i.img}" alt="${i.title}" class="cart-item-img" style="width:50px; border-radius:8px;">
                     <div class="cart-item-info">
-                        <p>Fall Limited Edition Sneakers</p>
-                        <p>$${unitPrice.toFixed(2)} x ${cartItemsCount} <b>$${total.toFixed(2)}</b></p>
+                        <p>${i.title}</p>
+                        <p>$${i.price.toFixed(2)} x ${i.qty} <b>$${lineTotal.toFixed(2)}</b></p>
                     </div>
-                    <button class="delete-btn" type="button">Delete</button>
+                    <button class="delete-btn" type="button" data-id="${i.id}">Delete</button>
+                </div>`;
+            }).join('');
+
+            const grandTotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+
+            cartContent.innerHTML = `
+                ${lines}
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-weight:bold;padding-top:10px;border-top:1px solid #eee;">
+                    <span>Total</span>
+                    <span>$${grandTotal.toFixed(2)}</span>
                 </div>
-                <button class="checkout-btn" type="button">Checkout</button>
+                <button class="checkout-btn" type="button" style="margin-top:12px;">Checkout</button>
             `;
         } else {
             clearCart();
@@ -85,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearCart() {
-        cartItemsCount = 0;
+        cartItems.length = 0;
         cartBadge.style.display = 'none';
         cartBadge.textContent = '0';
         cartContent.innerHTML = '<p class="empty-message">Your cart is empty.</p>';
